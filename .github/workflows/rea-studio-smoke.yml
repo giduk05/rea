@@ -2,6 +2,12 @@ name: REA Studio static smoke
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - experiment/rea-studio-mvp-20261013
+    paths:
+      - .github/workflows/rea-studio-smoke.yml
+      - tools/rea-studio/**
 
 permissions:
   contents: read
