@@ -1,0 +1,39 @@
+name: REA Studio static smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Analyze bundled JavaScript fixture
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install and build this fork's REA
+        run: |
+          npm ci
+          npm run build:cached
+      - name: Analyze bundled local fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/rea-studio"
+          node scripts/rea.mjs doctor --json > "$RUNNER_TEMP/rea-studio/doctor.json" || true
+          node scripts/rea.mjs analyze-javascript-application "$GITHUB_WORKSPACE/tools/rea-studio/fixture" --json > "$RUNNER_TEMP/rea-studio/evidence.json" 2> "$RUNNER_TEMP/rea-studio/rea-stderr.log"
+          python3 tools/rea-studio/check_evidence.py "$RUNNER_TEMP/rea-studio/evidence.json" "$RUNNER_TEMP/rea-studio/summary.json"
+      - name: Upload evidence and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rea-studio-smoke
+          path: ${{ runner.temp }}/rea-studio/
+          if-no-files-found: warn
+          retention-days: 7
