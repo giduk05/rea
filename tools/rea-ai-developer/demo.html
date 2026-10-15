@@ -1,0 +1,17 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>영어 지문 정리기 (REA 실험)</title>
+<style>*{box-sizing:border-box}body{font-family:system-ui,'Malgun Gothic',sans-serif;background:#f4f6fa;color:#17212c}main{max-width:920px;margin:30px auto;padding:16px}section{background:#fff;padding:24px;border-radius:14px;margin:18px 0;border:1px solid #dce2ec}textarea{width:100%;min-height:210px;padding:12px;font:16px/1.7 system-ui;border:1px solid #bbc8d7;border-radius:8px}button{margin:6px 6px 6px 0;padding:11px 15px;border:0;background:#224c96;color:white;border-radius:7px;cursor:pointer}#result{white-space:pre-wrap;line-height:1.8}#stats{color:#536071}p{color:#55616f}@page{size:A4;margin:14mm}@media print{body{background:#fff}main{max-width:none;margin:0}.no-print{display:none}section{border:0;padding:0}}</style></head>
+<body><main><header><h1>영어 지문 정리기</h1><p>실제로 작동하는 오프라인 데모입니다. 이 버전은 Gemini가 생성한 코드가 아닙니다.</p></header>
+<section class="no-print"><label for="input"><strong>영어 지문 붙여넣기</strong></label><textarea id="input">Learning is a process.  Practice makes progress.
+
+Reading  helps us understand the world.</textarea><div><button id="clean">정리하기</button><button id="copy">복사</button><button id="save">TXT 저장</button><button id="print">A4 인쇄</button></div><p id="stats" role="status"></p></section>
+<section><h2>정리된 지문</h2><div id="result" aria-live="polite"></div></section></main>
+<script>
+const input=document.getElementById("input"),result=document.getElementById("result"),stats=document.getElementById("stats");
+function normalize(text){return String(text).replace(/\r\n?/g,"\n").split("\n").map(x=>x.trim().replace(/[ \t]+/g," ")).join("\n").replace(/\n{3,}/g,"\n\n").trim()}
+function render(){const text=normalize(input.value);result.textContent=text;stats.textContent="단어 "+(text?text.split(/\s+/).length:0)+" · 글자 "+text.length+" · 문단 "+(text?text.split(/\n\s*\n/).length:0);return text}
+document.getElementById("clean").onclick=render;
+document.getElementById("copy").onclick=async()=>{try{await navigator.clipboard.writeText(render());stats.textContent+=" · 복사됨"}catch{stats.textContent+=" · 브라우저 복사 권한 필요"}};
+document.getElementById("save").onclick=()=>{const blob=new Blob([render()],{type:"text/plain;charset=utf-8"});const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="passage.txt";a.click();URL.revokeObjectURL(url)};
+document.getElementById("print").onclick=()=>{render();window.print()};
+render();
+</script></body></html>

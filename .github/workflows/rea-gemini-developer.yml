@@ -1,0 +1,84 @@
+name: REA Gemini Developer
+on:
+  push:
+    branches:
+      - experiment/rea-gemini-developer-v0
+    paths:
+      - .github/workflows/rea-gemini-developer.yml
+      - tools/rea-ai-developer/**
+  workflow_dispatch:
+    inputs:
+      run_gemini:
+        description: Make one Gemini API request after Free Tier verification
+        required: true
+        type: boolean
+        default: false
+      free_tier_acknowledgement:
+        description: Type I_VERIFIED_FREE_TIER after verifying Google AI Studio billing
+        required: false
+        type: string
+        default: ""
+      gemini_model:
+        description: Allowlisted model; default gemini-3.6-flash
+        required: true
+        type: string
+        default: gemini-3.6-flash
+permissions:
+  contents: read
+jobs:
+  offline:
+    name: Offline tests + real REA analyzer
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install REA
+        run: |
+          npm ci
+          npm run build:cached
+      - name: Test orchestrator without network
+        run: python3 -m unittest discover -s tools/rea-ai-developer/tests -v
+      - name: Analyze fixture and build offline demo
+        run: python3 tools/rea-ai-developer/orchestrator.py --mode offline --output "$RUNNER_TEMP/rea-ai-offline"
+      - name: Upload evidence and demo
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rea-ai-offline
+          path: ${{ runner.temp }}/rea-ai-offline/
+          if-no-files-found: warn
+          retention-days: 7
+  gemini:
+    name: One gated Gemini call
+    needs: offline
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_gemini == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Build REA
+        run: |
+          npm ci
+          npm run build:cached
+      - name: One Gemini app generation after free-tier verification
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          FREE_TIER_CONFIRMED: ${{ inputs.free_tier_acknowledgement }}
+          GEMINI_MODEL: ${{ inputs.gemini_model }}
+        run: python3 tools/rea-ai-developer/orchestrator.py --mode gemini --model "$GEMINI_MODEL" --output "$RUNNER_TEMP/rea-ai-generated"
+      - name: Upload AI-created app for review only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rea-ai-generated
+          path: ${{ runner.temp }}/rea-ai-generated/
+          if-no-files-found: warn
+          retention-days: 7
